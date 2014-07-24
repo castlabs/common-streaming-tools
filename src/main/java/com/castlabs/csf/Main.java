@@ -6,6 +6,8 @@
 
 package com.castlabs.csf;
 
+import com.castlabs.csf.cff.CreateStreamingDeliveryTargetFileset;
+import com.castlabs.csf.manifest.CreateManifestForFileset;
 import org.apache.commons.io.IOUtils;
 import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.CmdLineException;
@@ -28,7 +30,8 @@ public class Main {
             usage = "Command required. Supported commands are: [streaming-target]"
     )
     @SubCommands({
-            @SubCommand(name = "streaming-target", impl = CreateStreamingDeliveryTarget.class)
+            @SubCommand(name = "streaming-target", impl = CreateStreamingDeliveryTargetFileset.class),
+            @SubCommand(name = "create-simple-manifest", impl = CreateManifestForFileset.class)
     })
     Command command;
 

@@ -1,3 +1,8 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
 package com.castlabs.csf;
 
 import org.kohsuke.args4j.Option;
@@ -8,11 +13,8 @@ import java.util.logging.Level;
 import java.util.logging.LogManager;
 import java.util.logging.Logger;
 
-/**
- * Created by user on 23.07.2014.
- */
-public class AbstractCommand implements Command {
-    @Option(name ="--verbose", aliases = "-v", usage = "use switch to produce log output")
+public abstract class AbstractCommand implements Command {
+    @Option(name = "--verbose", aliases = "-v", usage = "use switch to produce log output")
     protected boolean verbose = false;
 
     protected Logger setupLogger() {
@@ -35,9 +37,4 @@ public class AbstractCommand implements Command {
         return logger;
     }
 
-    @Override
-    public int run() throws Exception {
-
-        return 0;
-    }
 }
