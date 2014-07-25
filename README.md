@@ -35,12 +35,19 @@ The profile needs to be given with the `-p` option until the ainf box version 1 
 ```
 java -jar common-streaming-tools-[version].jar streaming-target -p h107 PR_BBB_sd1.mp4 PR_BBB_sd2.mp4 PR_BBB_sd3.mp4 PR_BBB_hd1.mp4 PR_BBB_hd2.mp4 PR_BBB_hd3.mp4 PR_BBB_hd4.mp4 
 java -jar common-streaming-tools-[version].jar streaming-target -p h107 PR_BBB_audio.mp4 
-
 ```
 
 The result is always written into the current directory with appropriate extensions (uva, uvv, uvt). 
 
+### Encryption
+ 
+Common Encryption can be triggered by supplying the option `--content-encryption-key` for key (16 bytes as 32
+character hex string) and `--uuid` for the key ID (usual UUID notation e.g. efe93ea0-142a-11e4-8c21-0800200c9a66). 
+The second stage accepts encrypted and plain files. 
+
+
 ## Repackage CSF File for Streaming
+
 
 ### Most Simple Case: CSF file stays as is - Manifest uses media ranges
 
