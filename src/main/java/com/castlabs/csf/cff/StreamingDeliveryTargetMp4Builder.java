@@ -205,20 +205,6 @@ public class StreamingDeliveryTargetMp4Builder extends FragmentedMp4Builder {
         class MyItemDataBox extends ItemDataBox {
 
 
-            ItemLocationBox() {
-                @Override
-                protected void getContent (ByteBuffer bb){
-                    long itemSizes = 0;
-                    for (Item item : items) {
-                        final Extent extent = item.extents.get(0);
-                        extent.extentOffset = itemSizes;
-                        itemSizes += extent.extentLength;
-                    }
-
-                    super.getContent(bb);
-                }
-            }
-
             public long getOffset() {
                 Box b = this;
                 long offset = -4; // the calculation is systematically wrong by 4, I don't want to debug why. Just a quick correction --san 14.May.13
@@ -241,8 +227,20 @@ public class StreamingDeliveryTargetMp4Builder extends FragmentedMp4Builder {
         final ItemDataBox idat = new MyItemDataBox();
 
 
-        ItemLocationBox iloc = new;
+        ItemLocationBox iloc = new ItemLocationBox() {
+            @Override
+            protected void getContent(ByteBuffer bb) {
+                long itemSizes = 0;
+                for (Item item : items) {
+                    final Extent extent = item.extents.get(0);
+                    extent.extentOffset = itemSizes;
+                    itemSizes += extent.extentLength;
+                }
 
+                super.getContent(bb);
+            }
+        };
+        
         iloc.setVersion(1);
         int valueLength = 8;
         iloc.setIndexSize(0);
