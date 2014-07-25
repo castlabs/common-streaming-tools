@@ -5,7 +5,7 @@
 
     <groupId>com.castlabs.csf</groupId>
     <artifactId>common-streaming-tools</artifactId>
-    <version>0.2-SNAPSHOT</version>
+    <version>0.3-SNAPSHOT</version>
 
     <build>
         <resources>
@@ -68,7 +68,7 @@
                             <transformers>
                                 <transformer
                                         implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>com.castlabs.csf.Main</mainClass>
+                                <mainClass>com.castlabs.csf.Main</mainClass>
                                 </transformer>
                             </transformers>
                         </configuration>
