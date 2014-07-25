@@ -206,6 +206,7 @@ public class CreateStreamingDeliveryTargetFileset extends AbstractCommand {
                     throw new CommandAbortException("Don't know which trackId to assign for handler=" + track.getHandler());
                 }
             }
+            track.getTrackMetaData().setTrackId(trackId);
             codec = getFormat(sampleEntry); // if not set in cmd line first track encountered sets the format for this adaptation set
         }
         return codec.equals(getFormat(sampleEntry));

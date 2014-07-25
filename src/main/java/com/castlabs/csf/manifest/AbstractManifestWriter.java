@@ -82,9 +82,11 @@ public abstract class AbstractManifestWriter {
         adaptationSet.setBitstreamSwitching(true);
         String handler = ((HandlerBox) Path.getPath(files.iterator().next(), "/moov[0]/trak[0]/mdia[0]/hdlr[0]")).getHandlerType();
         if (handler.equals("soun")) {
-            adaptationSet.setMimeType("video/vnd.dece.audio");
+//            adaptationSet.setMimeType("video/vnd.dece.audio");
+            adaptationSet.setMimeType("audio/mp4");
         } else if (handler.equals("vide")) {
-            adaptationSet.setMimeType("video/vnd.dece.video");
+//            adaptationSet.setMimeType("video/vnd.dece.video");
+            adaptationSet.setMimeType("video/mp4");
         } else if (handler.equals("subt")) {
             adaptationSet.setMimeType("video/vnd.dece.ttml+xml");
         } else {

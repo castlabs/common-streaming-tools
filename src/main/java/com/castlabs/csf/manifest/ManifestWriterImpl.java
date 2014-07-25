@@ -10,18 +10,17 @@ import com.coremedia.iso.boxes.Box;
 import com.coremedia.iso.boxes.MovieHeaderBox;
 import com.coremedia.iso.boxes.TrackHeaderBox;
 import com.coremedia.iso.boxes.fragment.MovieExtendsHeaderBox;
-import com.coremedia.iso.boxes.fragment.MovieFragmentBox;
-import com.coremedia.iso.boxes.fragment.TrackRunBox;
 import com.googlecode.mp4parser.util.Path;
-import mpegDashSchemaMpd2011.*;
+import mpegDashSchemaMpd2011.AdaptationSetType;
+import mpegDashSchemaMpd2011.PeriodType;
+import mpegDashSchemaMpd2011.RepresentationType;
+import mpegDashSchemaMpd2011.SegmentBaseType;
 import org.apache.xmlbeans.GDuration;
 
 import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -31,7 +30,7 @@ import static com.castlabs.csf.manifest.ManifestHelper.createRepresentation;
 /**
  * Creates a single SIDX manifest.
  */
-public class SegmentListManifestWriterImpl extends AbstractManifestWriter {
+public class ManifestWriterImpl extends AbstractManifestWriter {
     Map<String, IsoFile> primaryVideo = new HashMap<String, IsoFile>();
     Map<String, IsoFile> secondaryVideo = new HashMap<String, IsoFile>();
     Map<String, IsoFile> mainAudio = new HashMap<String, IsoFile>();
@@ -41,7 +40,7 @@ public class SegmentListManifestWriterImpl extends AbstractManifestWriter {
     Map<String, IsoFile> secondarySubtitle = new HashMap<String, IsoFile>();
 
 
-    public SegmentListManifestWriterImpl(List<File> files) throws IOException {
+    public ManifestWriterImpl(List<File> files) throws IOException {
 
         for (File file : files) {
             IsoFile uv = new IsoFile(file.getAbsolutePath());
@@ -125,52 +124,24 @@ public class SegmentListManifestWriterImpl extends AbstractManifestWriter {
         for (Map.Entry<String, IsoFile> e : files.entrySet()) {
             IsoFile oneTrackFile = e.getValue();
             String filename = e.getKey();
-            RepresentationType representation = createRepresentation(adaptationSet, oneTrackFile);
-            MovieExtendsHeaderBox mehd = (MovieExtendsHeaderBox) Path.getPath(oneTrackFile, "/moov[0]/mvex[0]/mehd[0]");
             MovieHeaderBox mvhd = (MovieHeaderBox) Path.getPath(oneTrackFile, "/moov[0]/mvhd[0]");
+            MovieExtendsHeaderBox mehd = (MovieExtendsHeaderBox) Path.getPath(oneTrackFile, "/moov[0]/mvex[0]/mehd[0]");
+            RepresentationType representation = createRepresentation(adaptationSet, oneTrackFile);
+            SegmentBaseType segBaseType = representation.addNewSegmentBase();
+            createInitialization(segBaseType.addNewInitialization(), oneTrackFile);
 
+            segBaseType.setTimescale(mvhd.getTimescale());
+            segBaseType.setIndexRangeExact(true);
+            Box sidx = Path.getPath(oneTrackFile, "/sidx[0]");
+            segBaseType.setIndexRange(sidx.getOffset() + "-" + (sidx.getOffset() + sidx.getSize() - 1));
 
             representation.setBandwidth(getBitrate(oneTrackFile));
             representation.addNewBaseURL().setStringValue(filename);
-            long offset = 0;
 
 
-            SegmentListType segmentList = representation.addNewSegmentList();
-            segmentList.setTimescale(mvhd.getTimescale());
-            SegmentTimelineType segmentTimeline = segmentList.addNewSegmentTimeline();
-            createInitialization(segmentList.addNewInitialization(), oneTrackFile);
-            long time = 0;
+            double durationInSeconds = (double) mehd.getFragmentDuration() / mvhd.getTimescale();
+            maxDurationInSeconds = Math.max(maxDurationInSeconds, durationInSeconds);
 
-            Iterator<Box> boxes = oneTrackFile.getBoxes().iterator();
-            while (boxes.hasNext()) {
-                Box b = boxes.next();
-                if ("moof".equals(b.getType())) {
-
-                    SegmentTimelineType.S s = segmentTimeline.addNewS();
-                    MovieFragmentBox moof = (MovieFragmentBox) b;
-                    assert moof.getTrackRunBoxes().size() == 1 : "Ouch - doesn't with mutiple trun";
-
-                    TrackRunBox trun = moof.getTrackRunBoxes().get(0);
-                    long segmentDuration = 0;
-                    for (TrackRunBox.Entry entry : trun.getEntries()) {
-                        segmentDuration += entry.getSampleDuration();
-                    }
-                    s.setD((BigInteger.valueOf(segmentDuration)));
-                    s.setT(BigInteger.valueOf(time));
-                    time += segmentDuration;
-
-                    SegmentURLType segmentURL = segmentList.addNewSegmentURL();
-                    Box mdat = boxes.next();
-                    segmentURL.setMediaRange(
-                            String.format("%s-%s",
-                                    offset, offset + moof.getSize() + mdat.getSize())
-                    );
-
-                    offset += moof.getSize() + mdat.getSize();
-                } else {
-                    offset += b.getSize();
-                }
-            }
 
         }
         return maxDurationInSeconds;

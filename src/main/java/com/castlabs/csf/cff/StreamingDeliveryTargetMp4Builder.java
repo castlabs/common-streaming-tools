@@ -20,6 +20,7 @@ import com.googlecode.mp4parser.authoring.tracks.CencEncyprtedTrack;
 import com.googlecode.mp4parser.boxes.basemediaformat.AvcNalUnitStorageBox;
 import com.googlecode.mp4parser.boxes.threegpp26244.SegmentIndexBox;
 import com.googlecode.mp4parser.boxes.ultraviolet.AssetInformationBox;
+import com.googlecode.mp4parser.util.Path;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -210,10 +211,10 @@ public class StreamingDeliveryTargetMp4Builder extends FragmentedMp4Builder {
                         final Extent extent = item.extents.get(0);
                         extent.extentOffset = itemSizes;
                         itemSizes += extent.extentLength;
-                    }
+                }
 
                     super.getContent(bb);
-                }
+            }
 
 
             }
@@ -274,31 +275,23 @@ public class StreamingDeliveryTargetMp4Builder extends FragmentedMp4Builder {
         isoFile.addBox(createMoov(movie));
         List<Box> moofMdats = createMoofMdat(movie);
 
-        // create an sidx entry for each moof to have the correct size of the box
-        List<SegmentIndexBox.Entry> entries = new ArrayList<SegmentIndexBox.Entry>();
-
-
-        SegmentIndexBox sidx = new SegmentIndexBox();
-        sidx.setVersion(1);
-        sidx.setEntries(entries);
-        isoFile.addBox(sidx);
+        isoFile.addBox(createSidx(isoFile, moofMdats, 0));
 
         for (Box box : moofMdats) {
             isoFile.addBox(box);
         }
         isoFile.addBox(createMfra(movie, isoFile));
 
-        // now we have a file with parts in place.
-        // but we still need to set the sidx entries
-        Track track = movie.getTracks().get(0);
-
-        updateSidxData(isoFile, moofMdats, entries, sidx, track);
-
         return isoFile;
     }
 
-    private void updateSidxData(BasicContainer isoFile, List<Box> moofMdats, List<SegmentIndexBox.Entry> entries, SegmentIndexBox sidx, Track track) {
-
+    private SegmentIndexBox createSidx(BasicContainer isoFile, List<Box> moofMdats, long offsetBetweenSidxAndFirstMoof) {
+        SegmentIndexBox sidx = new SegmentIndexBox();
+        sidx.setVersion(0);
+        sidx.setFlags(0);
+        sidx.setReserved(0);
+        sidx.setFirstOffset(offsetBetweenSidxAndFirstMoof);
+        List<SegmentIndexBox.Entry> entries = sidx.getEntries();
         MovieFragmentBox firstMoof = null;
         for (Box moofMdat : moofMdats) {
             if (moofMdat.getType().equals("moof")) {
@@ -306,25 +299,19 @@ public class StreamingDeliveryTargetMp4Builder extends FragmentedMp4Builder {
                 entries.add(new SegmentIndexBox.Entry());
             }
         }
-        sidx.setReferenceId(track.getTrackMetaData().getTrackId());
-        sidx.setTimeScale(track.getTrackMetaData().getTimescale());
+        TrackHeaderBox tkhd = (TrackHeaderBox) Path.getPath(isoFile, "/moov[0]/trak[0]/tkhd[0]");
+        MediaHeaderBox mdhd = (MediaHeaderBox) Path.getPath(isoFile, "/moov[0]/trak[0]/mdia[0]/mdhd[0]");
+        sidx.setReferenceId(tkhd.getTrackId());
+        sidx.setTimeScale(mdhd.getTimescale());
         // we only have one
         TrackRunBox trun = firstMoof.getTrackRunBoxes().get(0);
         long[] ptss = getPtss(trun);
         Arrays.sort(ptss); // index 0 has now the earliest presentation time stamp!
-        long timeMappingEdit = getTimeMappingEditTime(track);
+        long timeMappingEdit = getTimeMappingEditTime(isoFile);
         sidx.setEarliestPresentationTime(ptss[0] - timeMappingEdit);
 
 
-        long firstOffset = 0;
-        for (Box box : isoFile.getBoxes()) {
-            if (box.getType().equals("moof")) {
-                sidx.setFirstOffset(firstOffset);
-                break;
-            }
-            firstOffset += box.getSize();
-        }
-
+        // ugly code ...
 
         int size = 0;
         int i = 0;
@@ -336,6 +323,7 @@ public class StreamingDeliveryTargetMp4Builder extends FragmentedMp4Builder {
                 entry.setReferencedSize(size);
                 ptss = getPtss(lassMoof.getTrackRunBoxes().get(0));
                 entry.setSapType(getFirstFrameSapType(ptss));
+                entry.setSubsegmentDuration(getTrunDuration(lassMoof.getTrackRunBoxes().get(0)));
                 entry.setStartsWithSap((byte) 1); // we know it - no need to lookup
                 size = l2i(moofMdat.getSize());
             } else {
@@ -349,8 +337,11 @@ public class StreamingDeliveryTargetMp4Builder extends FragmentedMp4Builder {
         SegmentIndexBox.Entry entry = entries.get(i);
         ptss = getPtss(lassMoof.getTrackRunBoxes().get(0));
         entry.setSapType(getFirstFrameSapType(ptss));
+        entry.setSubsegmentDuration(getTrunDuration(lassMoof.getTrackRunBoxes().get(0)));
         entry.setReferencedSize(size);
         entry.setStartsWithSap((byte) 1); // we know it - no need to lookup
+
+        return sidx;
     }
 
     protected byte getFirstFrameSapType(long[] ptss) {
@@ -364,10 +355,13 @@ public class StreamingDeliveryTargetMp4Builder extends FragmentedMp4Builder {
     }
 
 
-    private long getTimeMappingEditTime(Track track) {
-        final EditListBox editList = track.getTrackMetaData().getEditList();
+    private long getTimeMappingEditTime(Container file) {
+        final EditListBox editList = (EditListBox) Path.getPath(file, "/moov[0]/trak[0]/edts[0]/elst[0]");
         if (editList != null) {
             final List<EditListBox.Entry> entries = editList.getEntries();
+            if (entries.size() > 1) {
+                throw new RuntimeException("CSF shouldn't have more than one entry and I don't know how to deal with it.");
+            }
             for (EditListBox.Entry entry : entries) {
                 if (entry.getMediaTime() > 0) {
                     return entry.getMediaTime();
@@ -387,6 +381,16 @@ public class StreamingDeliveryTargetMp4Builder extends FragmentedMp4Builder {
         }
         return ptss;
     }
+
+    protected long getTrunDuration(TrackRunBox trun) {
+        final List<TrackRunBox.Entry> trunEntries = trun.getEntries();
+        long duration = 0;
+        for (TrackRunBox.Entry trunEntry : trunEntries) {
+            duration += trunEntry.getSampleDuration();
+        }
+        return duration;
+    }
+
 
 
 }
