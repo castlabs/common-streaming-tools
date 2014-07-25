@@ -240,7 +240,7 @@ public class StreamingDeliveryTargetMp4Builder extends FragmentedMp4Builder {
                 super.getContent(bb);
             }
         };
-        
+
         iloc.setVersion(1);
         int valueLength = 8;
         iloc.setIndexSize(0);

@@ -62,7 +62,7 @@ public abstract class AbstractManifestWriter {
                     Path.getPath(track, "/moov[0]/trak[0]/mdia[0]/minf[0]/stbl[0]/stsd[0]/encv[0]/sinf[0]/schi[0]/tenc[0]");
             if (tenc != null) {
                 if (keyId != null && !keyId.equals(UUID.fromString(tenc.getDefault_KID()))) {
-                    throw new RuntimeException("The ManifestWriter cannot deal with more than ONE key per adaptation set.");
+                    throw new RuntimeException("The ManifestWriter cannot deal with more than ONE cek per adaptation set.");
                 }
                 keyId = UUID.fromString(tenc.getDefault_KID());
             }

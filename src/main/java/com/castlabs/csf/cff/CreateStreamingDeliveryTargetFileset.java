@@ -6,6 +6,7 @@
 package com.castlabs.csf.cff;
 
 import com.castlabs.csf.AbstractCommand;
+import com.coremedia.iso.Hex;
 import com.coremedia.iso.boxes.Container;
 import com.coremedia.iso.boxes.OriginalFormatBox;
 import com.coremedia.iso.boxes.sampleentry.AbstractSampleEntry;
@@ -20,6 +21,8 @@ import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
 import org.kohsuke.args4j.spi.FileOptionHandler;
 
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -40,10 +43,35 @@ public class CreateStreamingDeliveryTargetFileset extends AbstractCommand {
     @Option(name = "--track-id", aliases = {"-t"})
     long trackId = -1;
 
+    protected UUID keyid;
+    protected SecretKey cek;
+
+    @Option(name = "--uuid",
+            aliases = "-u",
+            usage = "UUID (KeyID)",
+            depends = {"--content-encryption-key"}
+    )
+    protected String encKid = null;
+
+    @Option(name = "--content-encryption-key",
+            aliases = "-k",
+            usage = "Content Encryption Key",
+            depends = {"--uuid"}
+
+    )
+    protected String encKeySecretKey = null;
+
+
+
 
     @Override
     public int run() throws Exception {
         logger = setupLogger();
+        if (encKid != null) {
+            this.keyid = UUID.fromString(this.encKid);
+            this.cek = new SecretKeySpec(Hex.decodeHex(this.encKeySecretKey), "AES");
+        }
+
         Map<Track, String> trackOriginalFilename = setupTracks();
         FragmentIntersectionFinder intersectionFinder = getFragmentStartSamples(trackOriginalFilename);
         Map<Track, String> filenames = generateFilenames(trackOriginalFilename);
@@ -56,7 +84,11 @@ public class CreateStreamingDeliveryTargetFileset extends AbstractCommand {
 
         Movie m = new Movie();
         for (Map.Entry<Track, String> e : trackOriginalFilename.entrySet()) {
-            m.setTracks(Collections.singletonList(e.getKey()));
+            if (keyid != null) {
+                m.setTracks(Collections.<Track>singletonList(new CencEncryptingTrackImpl(e.getKey(), keyid, cek)));
+            } else {
+                m.setTracks(Collections.<Track>singletonList(e.getKey()));
+            }
             mp4Builder.setApid("urn:dece:apid:org:castlabs:" + FilenameUtils.getBaseName(e.getValue()));
             Container c = mp4Builder.build(m);
             String filename = filenames.get(e.getKey());
