@@ -15,14 +15,19 @@ java -jar common-streaming-tools-0.2.jar [command] [options] [arguments]
 
 ## Example Files
 
-[AAC Stereo Track](https://castlabs-dl.s3.amazonaws.com/public/drmtoday/sample_media_files_for_packager/PR_testfiles/PR_BBB_audio.mp4)
-[H264 HD Best Quality](https://castlabs-dl.s3.amazonaws.com/public/drmtoday/sample_media_files_for_packager/PR_testfiles/PR_BBB_hd1.mp4)
-[H264 HD Better Quality](https://castlabs-dl.s3.amazonaws.com/public/drmtoday/sample_media_files_for_packager/PR_testfiles/PR_BBB_hd2.mp4)
-[H264 HD Good Quality](https://castlabs-dl.s3.amazonaws.com/public/drmtoday/sample_media_files_for_packager/PR_testfiles/PR_BBB_hd3.mp4)
-[H264 HD Low Quality](https://castlabs-dl.s3.amazonaws.com/public/drmtoday/sample_media_files_for_packager/PR_testfiles/PR_BBB_hd4.mp4)
-[H264 SD Best Quality](https://castlabs-dl.s3.amazonaws.com/public/drmtoday/sample_media_files_for_packager/PR_testfiles/PR_BBB_sd1.mp4)
-[H264 SD Better Quality](https://castlabs-dl.s3.amazonaws.com/public/drmtoday/sample_media_files_for_packager/PR_testfiles/PR_BBB_sd2.mp4)
-[H264 SD Good Quality](https://castlabs-dl.s3.amazonaws.com/public/drmtoday/sample_media_files_for_packager/PR_testfiles/PR_BBB_sd3.mp4)
+### Audio
+
+* [AAC Stereo Track](https://castlabs-dl.s3.amazonaws.com/public/drmtoday/sample_media_files_for_packager/PR_testfiles/PR_BBB_audio.mp4)
+
+### Video
+
+* [H264 HD Best Quality](https://castlabs-dl.s3.amazonaws.com/public/drmtoday/sample_media_files_for_packager/PR_testfiles/PR_BBB_hd1.mp4)
+* [H264 HD Better Quality](https://castlabs-dl.s3.amazonaws.com/public/drmtoday/sample_media_files_for_packager/PR_testfiles/PR_BBB_hd2.mp4)
+* [H264 HD Good Quality](https://castlabs-dl.s3.amazonaws.com/public/drmtoday/sample_media_files_for_packager/PR_testfiles/PR_BBB_hd3.mp4)
+* [H264 HD Low Quality](https://castlabs-dl.s3.amazonaws.com/public/drmtoday/sample_media_files_for_packager/PR_testfiles/PR_BBB_hd4.mp4)
+* [H264 SD Best Quality](https://castlabs-dl.s3.amazonaws.com/public/drmtoday/sample_media_files_for_packager/PR_testfiles/PR_BBB_sd1.mp4)
+* [H264 SD Better Quality](https://castlabs-dl.s3.amazonaws.com/public/drmtoday/sample_media_files_for_packager/PR_testfiles/PR_BBB_sd2.mp4)
+* [H264 SD Good Quality](https://castlabs-dl.s3.amazonaws.com/public/drmtoday/sample_media_files_for_packager/PR_testfiles/PR_BBB_sd3.mp4)
 
 
 ## Create CSF/CFF file
