@@ -203,6 +203,8 @@ public class StreamingDeliveryTargetMp4Builder extends FragmentedMp4Builder {
 
 
         class MyItemDataBox extends ItemDataBox {
+
+
             ItemLocationBox() {
                 @Override
                 protected void getContent (ByteBuffer bb){
@@ -211,12 +213,10 @@ public class StreamingDeliveryTargetMp4Builder extends FragmentedMp4Builder {
                         final Extent extent = item.extents.get(0);
                         extent.extentOffset = itemSizes;
                         itemSizes += extent.extentLength;
-                }
+                    }
 
                     super.getContent(bb);
-            }
-
-
+                }
             }
 
             public long getOffset() {
@@ -242,6 +242,7 @@ public class StreamingDeliveryTargetMp4Builder extends FragmentedMp4Builder {
 
 
         ItemLocationBox iloc = new;
+
         iloc.setVersion(1);
         int valueLength = 8;
         iloc.setIndexSize(0);
@@ -390,7 +391,6 @@ public class StreamingDeliveryTargetMp4Builder extends FragmentedMp4Builder {
         }
         return duration;
     }
-
 
 
 }
