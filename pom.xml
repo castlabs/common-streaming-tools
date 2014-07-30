@@ -114,7 +114,7 @@
     </dependencies>
 
     <scm>
-        <developerConnection>scm:git:https://github.com/castlabs/common-streaming-tools</developerConnection>
+        <developerConnection>scm:git:git@github.com:castlabs/common-streaming-tools.git</developerConnection>
         <tag>HEAD</tag>
     </scm>
 
