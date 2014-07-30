@@ -81,7 +81,7 @@
         <dependency>
             <groupId>com.googlecode.mp4parser</groupId>
             <artifactId>isoparser</artifactId>
-            <version>1.0.3.2-SNAPSHOT</version>
+            <version>1.0.3.2</version>
         </dependency>
         <dependency>
             <groupId>args4j</groupId>
@@ -113,7 +113,7 @@
     <repositories>
         <repository>
             <id>mp4parser-staging</id>
-            <url>https://oss.sonatype.org/content/repositories/comgooglecodemp4parser-1024</url>
+            <url>https://oss.sonatype.org/content/repositories/comgooglecodemp4parser-1025</url>
         </repository>
     </repositories>
 </project>
