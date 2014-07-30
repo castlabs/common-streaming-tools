@@ -131,13 +131,14 @@ public class ManifestWriterImpl extends AbstractManifestWriter {
                 TrackHeaderBox tkhd = (TrackHeaderBox) Path.getPath(stringIsoFileEntry.getValue(), "moov[0]/trak[0]/tkhd[0]");
                 if (tkhd.getTrackId() == trackId) {
                     tracksWithCurrentTracksId.put(stringIsoFileEntry.getKey(), stringIsoFileEntry.getValue());
-                    logger.info(String.format("-- Adding %20s to AdaptationSet with groupId %d", stringIsoFileEntry.getKey(), group));
+                    logger.info(String.format("-- Adding %25s to AdaptationSet with groupId %d", stringIsoFileEntry.getKey(), group));
                 }
             }
             logger.info("AdaptationSet Done");
 
             AdaptationSetType adaptationSet = createAdaptationSet(periodType, tracksWithCurrentTracksId.values());
             adaptationSet.setId(trackId);
+            adaptationSet.setGroup(group);
             for (Map.Entry<String, IsoFile> e : tracksWithCurrentTracksId.entrySet()) {
                 IsoFile oneTrackFile = e.getValue();
                 String filename = e.getKey();
