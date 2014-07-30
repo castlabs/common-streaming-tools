@@ -49,10 +49,10 @@ public class ManifestWriterImpl extends AbstractManifestWriter {
             String template = "Adding %30s to %16s - trackId = %d";
             if (t < 50) {
                 primaryVideo.put(file.getName(), uv);
-                logger.info(String.format(template, file.getName(), "primary videos", t));
+                logger.info(String.format(template, file.getName(), "primary video", t));
             } else if (t < 100) {
                 secondaryVideo.put(file.getName(), uv);
-                logger.info(String.format(template, file.getName(), "secondary videos", t));
+                logger.info(String.format(template, file.getName(), "secondary video", t));
             } else if (t < 1000) {
                 mainAudio.put(file.getName(), uv);
                 logger.info(String.format(template, file.getName(), "main audio", t));
@@ -64,10 +64,10 @@ public class ManifestWriterImpl extends AbstractManifestWriter {
                 logger.info(String.format(template, file.getName(), "tertiary audio", t));
             } else if (t < 11000) {
                 mainSubtitle.put(file.getName(), uv);
-                logger.info(String.format(template, file.getName(), "main subtitles", t));
+                logger.info(String.format(template, file.getName(), "main subtitle", t));
             } else {
                 secondarySubtitle.put(file.getName(), uv);
-                logger.info(String.format(template, file.getName(), "secondary subtitles", t));
+                logger.info(String.format(template, file.getName(), "secondary subtitle", t));
             }
         }
 
