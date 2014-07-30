@@ -4,7 +4,7 @@
 
     <groupId>com.castlabs.csf</groupId>
     <artifactId>common-streaming-tools</artifactId>
-    <version>0.3</version>
+    <version>0.4-SNAPSHOT</version>
 
     <build>
         <resources>
@@ -113,7 +113,7 @@
 
     <scm>
         <developerConnection>scm:git:git@github.com:castlabs/common-streaming-tools.git</developerConnection>
-        <tag>common-streaming-tools-0.3</tag>
+        <tag>HEAD</tag>
     </scm>
 
     <repositories>
