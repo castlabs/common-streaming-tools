@@ -34,7 +34,7 @@ public class CreateManifestForFileset extends AbstractCommand {
         xmlOptions.setSaveAggressiveNamespaces();
         xmlOptions.setUseDefaultNamespace();
         xmlOptions.setSavePrettyPrint();
-        mpd.save(new File("Manifest.xml"), xmlOptions);
+        mpd.save(new File("manifest.mpd"), xmlOptions);
         return 0;
     }
 }
