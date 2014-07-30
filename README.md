@@ -35,8 +35,9 @@ java -jar common-streaming-tools-0.2.jar [command] [options] [arguments]
 The 'streaming-target' command creates CFF files. You should always package all files of an AdaptationSet with one run of
 the tool so that the fragments are created at same time even if certain quality have additional I frames.
 
-The profile needs to be given with the `-p` option until the ainf box version 1 is implmented. 
-
+Track IDs are guessed but can be overridden by the command line option `--track-id` or `-t`. All videos always get 
+track ID 1, audio tracks get a trackId between 100 and 599 depending on the audio codec ( aac = 1xx, mlp = 2xx, ...). 
+`xx` is replaced with two language dependent digits. 
 
 ```
 java -jar common-streaming-tools-0.2.jar streaming-target -p h107 PR_BBB_sd1.mp4 PR_BBB_sd2.mp4 PR_BBB_sd3.mp4 PR_BBB_hd1.mp4 PR_BBB_hd2.mp4 PR_BBB_hd3.mp4 PR_BBB_hd4.mp4 

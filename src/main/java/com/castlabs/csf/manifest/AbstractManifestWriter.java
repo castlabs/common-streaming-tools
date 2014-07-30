@@ -68,7 +68,8 @@ public abstract class AbstractManifestWriter {
             }
             MediaHeaderBox mdhd = (MediaHeaderBox) Path.getPath(track, "/moov[0]/trak[0]/mdia[0]/mdhd[0]");
             if (language != null && !language.endsWith(mdhd.getLanguage())) {
-                throw new RuntimeException("The ManifestWriter cannot deal with more than ONE language per adaptation set.");
+                throw new RuntimeException("The ManifestWriter cannot deal with more than ONE language " +
+                        "per adaptation set. (" + language + " vs. " + mdhd.getLanguage() + ")");
             }
 
             language = mdhd.getLanguage();

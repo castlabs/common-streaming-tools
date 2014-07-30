@@ -24,7 +24,7 @@ public class CreateManifestForFileset extends AbstractCommand {
 
     public int run() throws Exception {
         logger = setupLogger();
-        MPDDocument mpd = new ManifestWriterImpl(files).getManifest();
+        MPDDocument mpd = new ManifestWriterImpl(files, logger).getManifest();
         XmlOptions xmlOptions = new XmlOptions();
         //xmlOptions.setUseDefaultNamespace();
         HashMap<String, String> ns = new HashMap<String, String>();

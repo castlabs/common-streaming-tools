@@ -11,6 +11,7 @@ import com.coremedia.iso.boxes.fragment.TrackFragmentBaseMediaDecodeTimeBox;
 import com.coremedia.iso.boxes.fragment.TrackFragmentBox;
 import com.coremedia.iso.boxes.fragment.TrackRunBox;
 import com.coremedia.iso.boxes.h264.AvcConfigurationBox;
+import com.coremedia.iso.boxes.sampleentry.DashHelper;
 import com.coremedia.iso.boxes.sampleentry.VisualSampleEntry;
 import com.googlecode.mp4parser.BasicContainer;
 import com.googlecode.mp4parser.authoring.Movie;
@@ -18,8 +19,8 @@ import com.googlecode.mp4parser.authoring.Track;
 import com.googlecode.mp4parser.authoring.builder.FragmentedMp4Builder;
 import com.googlecode.mp4parser.authoring.tracks.CencEncyprtedTrack;
 import com.googlecode.mp4parser.boxes.basemediaformat.AvcNalUnitStorageBox;
+import com.googlecode.mp4parser.boxes.dece.AssetInformationBox;
 import com.googlecode.mp4parser.boxes.threegpp26244.SegmentIndexBox;
-import com.googlecode.mp4parser.boxes.ultraviolet.AssetInformationBox;
 import com.googlecode.mp4parser.util.Path;
 
 import java.nio.ByteBuffer;
@@ -34,7 +35,6 @@ import static com.googlecode.mp4parser.util.CastUtils.l2i;
 public class StreamingDeliveryTargetMp4Builder extends FragmentedMp4Builder {
 
     private String apid = "";
-    private String profile;
     private String metaXml = "";
 
     private List<ByteBuffer> idatContents = new ArrayList<ByteBuffer>();
@@ -95,10 +95,6 @@ public class StreamingDeliveryTargetMp4Builder extends FragmentedMp4Builder {
         this.metaXml = metaXml;
     }
 
-    public void setProfile(String profile) {
-        this.profile = profile;
-    }
-
     @Override
     public List<String> getAllowedHandlers() {
         return Arrays.asList("soun", "vide", "subt");
@@ -129,8 +125,50 @@ public class StreamingDeliveryTargetMp4Builder extends FragmentedMp4Builder {
 
     protected Box createAinf(Movie movie) {
         AssetInformationBox ainf = new AssetInformationBox();
-        ainf.setProfileVersion(profile);
-        ainf.setApid(apid);
+        ainf.setVersion(1);
+        ainf.setV1Codecs(DashHelper.getRfc6381Codec(movie.getTracks().get(0).getSampleDescriptionBox().getSampleEntry()));
+        String handler = movie.getTracks().get(0).getHandler();
+        String res = "";
+        if (handler.equals("soun")) {
+            ainf.setV1MimeSubtypeName("video/vnd.dece.audio");
+            res = "pd+";
+        } else if (handler.equals("vide")) {
+            ainf.setV1MimeSubtypeName("video/vnd.dece.video");
+            VisualSampleEntry vse = ((VisualSampleEntry) movie.getTracks().get(0).getSampleDescriptionBox().getSampleEntry());
+            if (vse.getHeight() <= 240) {
+                res = "pd";
+            } else if (vse.getHeight() <= 480) {
+                res = "sd";
+            } else if (vse.getHeight() <= 1080) {
+                if (vse.getBoxes().get(0) instanceof AvcConfigurationBox) {
+                    AvcConfigurationBox avc = (AvcConfigurationBox) vse.getBoxes().get(0);
+                    if (avc.getAvcProfileIndication() <= 40) {
+                        res = "hd";
+                    } else {
+                        res = "xhd";
+                    }
+                } else {
+                    throw new RuntimeException("Don't know how to deal with " + vse.getBoxes().get(0).getType() + " codecs. Is it H265?");
+                }
+            } else {
+                throw new RuntimeException("Unknown profile " + handler + " - cannot find correct mime type for ainf box");
+            }
+        } else if (handler.equals("subt")) {
+            ainf.setV1MimeSubtypeName("video/vnd.dece.ttml+xml");
+            res = "pd+";
+        } else {
+            throw new RuntimeException("Unknown handler " + handler + " - cannot find correct mime type for ainf box");
+        }
+
+
+        AssetInformationBox.Entry e = new AssetInformationBox.Entry("urn:dece", "urn:dece:profilelevelidc:120:" + res + ":single-track:streaming", apid);
+        ainf.setV1Entries(Collections.singletonList(e));
+        for (Track track : movie.getTracks()) {
+            if (track instanceof CencEncyprtedTrack) {
+                ainf.setV1Encrypted(true);
+            }
+        }
+
         return ainf;
     }
 

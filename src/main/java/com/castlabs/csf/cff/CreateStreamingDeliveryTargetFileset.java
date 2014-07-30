@@ -31,14 +31,19 @@ import java.util.logging.Logger;
 
 
 public class CreateStreamingDeliveryTargetFileset extends AbstractCommand {
+    Logger logger;
+
+    private static final String DEFAULT_LANG = "eng";
+
     @Argument(required = true, multiValued = true, handler = FileOptionHandler.class, usage = "MP4 and bitstream input files", metaVar = "vid1.mp4, vid2.mp4, aud1.mp4, aud2.ec3 ...")
     protected List<File> inputFiles;
-    Logger logger;
+
+
     @Option(name = "--codec", aliases = {"-c"})
     String codec;
 
-    @Option(name = "--profile", aliases = {"-p"}, required = true)
-    String profile;
+    @Option(name = "--language", aliases = {"-l"})
+    String language;
 
     @Option(name = "--track-id", aliases = {"-t"})
     long trackId = -1;
@@ -62,8 +67,6 @@ public class CreateStreamingDeliveryTargetFileset extends AbstractCommand {
     protected String encKeySecretKey = null;
 
 
-
-
     @Override
     public int run() throws Exception {
         logger = setupLogger();
@@ -80,7 +83,6 @@ public class CreateStreamingDeliveryTargetFileset extends AbstractCommand {
         StreamingDeliveryTargetMp4Builder mp4Builder = new StreamingDeliveryTargetMp4Builder();
         mp4Builder.setIntersectionFinder(intersectionFinder);
 
-        mp4Builder.setProfile(profile);
 
         Movie m = new Movie();
         for (Map.Entry<Track, String> e : trackOriginalFilename.entrySet()) {
@@ -89,10 +91,13 @@ public class CreateStreamingDeliveryTargetFileset extends AbstractCommand {
             } else {
                 m.setTracks(Collections.<Track>singletonList(e.getKey()));
             }
-            mp4Builder.setApid("urn:dece:apid:org:castlabs:" + FilenameUtils.getBaseName(e.getValue()));
+            String apid = "urn:dece:apid:org:castlabs:" + FilenameUtils.getBaseName(e.getValue());
+            mp4Builder.setApid(apid);
             Container c = mp4Builder.build(m);
             String filename = filenames.get(e.getKey());
             FileOutputStream fos = new FileOutputStream(filename);
+            logger.info(String.format("Writing %s (track_ID=%d, apid=%s)",
+                    filename, e.getKey().getTrackMetaData().getTrackId(), apid));
             c.writeContainer(fos.getChannel());
             fos.close();
         }
@@ -175,7 +180,7 @@ public class CreateStreamingDeliveryTargetFileset extends AbstractCommand {
             if (inputFile.getName().endsWith("mp4")) {
                 Movie movie = MovieCreator.build(new FileDataSourceImpl(inputFile));
                 for (Track track : movie.getTracks()) {
-                    if (checkCodec(track)) {
+                    if (checkCodecAndLanguage(track, inputFile.getName())) {
                         track2File.put(track, inputFile.getName());
                     }
                 }
@@ -186,7 +191,6 @@ public class CreateStreamingDeliveryTargetFileset extends AbstractCommand {
                     logger.fine("Created AAC Track from " + inputFile.getName());
                 } else if (inputFile.getName().endsWith(".h264")) {
                     track = new H264TrackImpl(new FileDataSourceImpl(inputFile));
-
                     logger.fine("Created H264 Track from " + inputFile.getName());
                 } else if (inputFile.getName().endsWith(".ac3")) {
                     track = new AC3TrackImpl(new FileDataSourceImpl(inputFile));
@@ -201,10 +205,14 @@ public class CreateStreamingDeliveryTargetFileset extends AbstractCommand {
                     logger.warning("Cannot identify type of " + inputFile + ". Extensions mp4, aac, ac3, ec3 or dtshd are known.");
                 }
                 if (track != null) {
-                    if ((checkCodec(track))) {
-                        track2File.put(track, inputFile.getName());
+                    if (language != null) {
+                        track.getTrackMetaData().setLanguage(language);
                     } else {
-                        logger.warning("Skipping " + getFormat(track.getSampleDescriptionBox().getSampleEntry()) + " track extracted from " + inputFile.getName());
+                        logger.fine("No language given for raw track - defaulting to " + DEFAULT_LANG);
+                        track.getTrackMetaData().setLanguage(DEFAULT_LANG);
+                    }
+                    if ((checkCodecAndLanguage(track, inputFile.getName()))) {
+                        track2File.put(track, inputFile.getName());
                     }
                 }
             }
@@ -212,7 +220,7 @@ public class CreateStreamingDeliveryTargetFileset extends AbstractCommand {
         return track2File;
     }
 
-    private boolean checkCodec(Track track) throws CommandAbortException {
+    private boolean checkCodecAndLanguage(Track track, String origFile) throws CommandAbortException {
         AbstractSampleEntry sampleEntry = track.getSampleDescriptionBox().getSampleEntry();
         if (codec == null) {
             if (trackId == -1) {
@@ -226,7 +234,29 @@ public class CreateStreamingDeliveryTargetFileset extends AbstractCommand {
                     if (track.getTrackMetaData().getTrackId() >= 100 && track.getTrackMetaData().getTrackId() <= 999) {
                         trackId = track.getTrackMetaData().getTrackId();
                     } else {
-                        trackId = 100;
+                        String codec = track.getSampleDescriptionBox().getSampleEntry().getType();
+                        if ("mp4a".equals(codec)) {
+                            trackId = 100;
+                        } else if ("mlpa".equals(codec)) {
+                            trackId = 200;
+                        } else if ("dtsl".equals(codec)) {
+                            trackId = 300;
+                        } else if ("dtsh".equals(codec)) {
+                            trackId = 300;
+                        } else if ("dtsl".equals(codec)) {
+                            trackId = 400;
+                        } else if ("dtse".equals(codec)) {
+                            trackId = 500;
+                        } else if ("ac-3".equals(codec)) {
+                            trackId = 600;
+                        } else if ("ec-3".equals(codec)) {
+                            trackId = 700;
+                        } else {
+                            throw new RuntimeException("Don't know which track number to assign");
+                        }
+                        trackId += track.getTrackMetaData().getLanguage().hashCode() % 100;
+                        // this is not bullet-proof but should make that each codec/language combo gets its own
+                        // track id without collisions.
                     }
                 } else if (track.getHandler().equals("subt")) {
                     if (track.getTrackMetaData().getTrackId() >= 10000 && track.getTrackMetaData().getTrackId() <= 10999) {
@@ -238,10 +268,21 @@ public class CreateStreamingDeliveryTargetFileset extends AbstractCommand {
                     throw new CommandAbortException("Don't know which trackId to assign for handler=" + track.getHandler());
                 }
             }
-            track.getTrackMetaData().setTrackId(trackId);
             codec = getFormat(sampleEntry); // if not set in cmd line first track encountered sets the format for this adaptation set
         }
-        return codec.equals(getFormat(sampleEntry));
+        track.getTrackMetaData().setTrackId(trackId);
+        if (language == null) {
+            language = track.getTrackMetaData().getLanguage();
+        }
+        if (!codec.equals(getFormat(sampleEntry))) {
+            logger.warning("Skipping " + getFormat(track.getSampleDescriptionBox().getSampleEntry()) + " track extracted from " + origFile + " as it is not the same codec as previously processed tracks");
+            return false;
+        }
+        if (!language.equals(track.getTrackMetaData().getLanguage())) {
+            logger.warning("Skipping " + getFormat(track.getSampleDescriptionBox().getSampleEntry()) + " track extracted from " + origFile + " as it is not the same languae as previously processed tracks");
+            return false;
+        }
+        return true;
     }
 
     protected String getFormat(AbstractSampleEntry se) {
