@@ -9,7 +9,7 @@ Please note that this tool doesn't encode video nor audio. It takes correctly en
 The command line is always
 
 ```
-java -jar common-streaming-tools-0.2.jar [command] [options] [arguments]
+java -jar common-streaming-tools-0.3.jar [command] [options] [arguments]
 ```
 
 
