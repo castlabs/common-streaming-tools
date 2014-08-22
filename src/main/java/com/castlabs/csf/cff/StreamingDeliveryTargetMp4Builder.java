@@ -19,7 +19,7 @@ import com.googlecode.mp4parser.authoring.Track;
 import com.googlecode.mp4parser.authoring.builder.FragmentedMp4Builder;
 import com.googlecode.mp4parser.authoring.tracks.CencEncyprtedTrack;
 import com.googlecode.mp4parser.boxes.basemediaformat.AvcNalUnitStorageBox;
-import com.googlecode.mp4parser.boxes.dece.AssetInformationBox;
+import com.googlecode.mp4parser.boxes.dece.ContentInformationBox;
 import com.googlecode.mp4parser.boxes.threegpp26244.SegmentIndexBox;
 import com.googlecode.mp4parser.util.Path;
 
@@ -96,11 +96,6 @@ public class StreamingDeliveryTargetMp4Builder extends FragmentedMp4Builder {
     }
 
     @Override
-    public List<String> getAllowedHandlers() {
-        return Arrays.asList("soun", "vide", "subt");
-    }
-
-    @Override
     public Box createFtyp(Movie movie) {
         return new FileTypeBox("ccff", 0, Arrays.asList("isom", "avc1", "iso6"));
     }
@@ -110,7 +105,7 @@ public class StreamingDeliveryTargetMp4Builder extends FragmentedMp4Builder {
         MovieBox movieBox = new MovieBox();
 
         movieBox.addBox(createMvhd(movie));
-        movieBox.addBox(createAinf(movie));
+        movieBox.addBox(createCinf(movie));
         movieBox.addBox(createMeta());
 
 
@@ -123,53 +118,66 @@ public class StreamingDeliveryTargetMp4Builder extends FragmentedMp4Builder {
 
     }
 
-    protected Box createAinf(Movie movie) {
-        AssetInformationBox ainf = new AssetInformationBox();
-        ainf.setVersion(1);
-        ainf.setV1Codecs(DashHelper.getRfc6381Codec(movie.getTracks().get(0).getSampleDescriptionBox().getSampleEntry()));
-        String handler = movie.getTracks().get(0).getHandler();
-        String res = "";
-        if (handler.equals("soun")) {
-            ainf.setV1MimeSubtypeName("video/vnd.dece.audio");
-            res = "pd+";
-        } else if (handler.equals("vide")) {
-            ainf.setV1MimeSubtypeName("video/vnd.dece.video");
-            VisualSampleEntry vse = ((VisualSampleEntry) movie.getTracks().get(0).getSampleDescriptionBox().getSampleEntry());
-            if (vse.getHeight() <= 240) {
-                res = "pd";
-            } else if (vse.getHeight() <= 480) {
-                res = "sd";
-            } else if (vse.getHeight() <= 1080) {
-                if (vse.getBoxes().get(0) instanceof AvcConfigurationBox) {
-                    AvcConfigurationBox avc = (AvcConfigurationBox) vse.getBoxes().get(0);
-                    if (avc.getAvcProfileIndication() <= 40) {
-                        res = "hd";
+    protected Box createCinf(Movie movie) {
+        ContentInformationBox cinf = new ContentInformationBox();
+        String codecs = "";
+        String languages = "";
+        String profileLevelIds = "";
+        String mimeSubtypeName = "";
+        String protection = "";
+        for (Track track : movie.getTracks()) {
+            codecs += DashHelper.getRfc6381Codec(track.getSampleDescriptionBox().getSampleEntry()) + ",";
+            languages += track.getTrackMetaData().getLanguage() + ",";
+            SchemeTypeBox schm = Path.getPath(track.getSampleDescriptionBox(), "enc.[0]/sinf[0]/schm[0]");
+            if (schm == null) {
+                protection += "none,";
+            } else {
+                protection += schm.getSchemeType() + ",";
+            }
+
+
+            if ("vide".equals(track.getHandler())) {
+                mimeSubtypeName += "video/vnd.dece.video,";
+                VisualSampleEntry vse = ((VisualSampleEntry) movie.getTracks().get(0).getSampleDescriptionBox().getSampleEntry());
+                if (vse.getHeight() <= 240) {
+                    profileLevelIds += "cfpd,";
+                } else if (vse.getHeight() <= 480) {
+                    profileLevelIds += "cfsd,";
+                } else if (vse.getHeight() <= 1080) {
+                    if (vse.getBoxes().get(0) instanceof AvcConfigurationBox) {
+                        AvcConfigurationBox avc = (AvcConfigurationBox) vse.getBoxes().get(0);
+                        if (avc.getAvcProfileIndication() <= 40) {
+                            profileLevelIds += "cfhd,";
+                        } else {
+                            profileLevelIds += "cfxd,";
+                        }
                     } else {
-                        res = "xhd";
+                        throw new RuntimeException("Don't know how to deal with " + vse.getBoxes().get(0).getType() + " codecs. Is it H265?");
                     }
                 } else {
-                    throw new RuntimeException("Don't know how to deal with " + vse.getBoxes().get(0).getType() + " codecs. Is it H265?");
+                    throw new RuntimeException("Unknown profile " + track.getName() + " - cannot find correct mime type for cinf box");
                 }
-            } else {
-                throw new RuntimeException("Unknown profile " + handler + " - cannot find correct mime type for ainf box");
-            }
-        } else if (handler.equals("subt")) {
-            ainf.setV1MimeSubtypeName("video/vnd.dece.ttml+xml");
-            res = "pd+";
-        } else {
-            throw new RuntimeException("Unknown handler " + handler + " - cannot find correct mime type for ainf box");
-        }
-
-
-        AssetInformationBox.Entry e = new AssetInformationBox.Entry("urn:dece", "urn:dece:profilelevelidc:120:" + res + ":single-track:streaming", apid);
-        ainf.setV1Entries(Collections.singletonList(e));
-        for (Track track : movie.getTracks()) {
-            if (track instanceof CencEncyprtedTrack) {
-                ainf.setV1Encrypted(true);
+            } else if ("soun".equals(track.getHandler())) {
+                mimeSubtypeName += "video/vnd.dece.audio,";
+                profileLevelIds += "cfsd,";
+            } else if ("subt".equals(track.getHandler())) {
+                mimeSubtypeName += "video/vnd.dece.ttml+xml,";
+                profileLevelIds += "cfad,";
             }
         }
+        cinf.setCodecs(codecs.replaceAll(",$", ""));
+        cinf.setLanguages(languages.replaceAll(",$", ""));
+        cinf.setProfileLevelIdc(profileLevelIds.replaceAll(",$", ""));
+        cinf.setMimeSubtypeName(mimeSubtypeName.replaceAll(",$", ""));
+        cinf.setProtection(protection.replaceAll(",$", ""));
+        cinf.getIdEntries().add(new ContentInformationBox.IdEntry("urn:dece:asset_id", apid));
 
-        return ainf;
+        FileTypeBox ftyp = (FileTypeBox) createFtyp(movie);
+        for (String s : ftyp.getCompatibleBrands()) {
+            cinf.getBrandEntries().add(new ContentInformationBox.BrandEntry(s, "0"));
+        }
+        cinf.getBrandEntries().add(new ContentInformationBox.BrandEntry("cinf", "200"));
+        return cinf;
     }
 
     protected void createTfdt(long startSample, Track track, TrackFragmentBox parent) {
