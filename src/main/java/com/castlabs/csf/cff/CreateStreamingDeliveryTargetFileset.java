@@ -20,9 +20,15 @@ import org.apache.commons.io.FilenameUtils;
 import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
 import org.kohsuke.args4j.spi.FileOptionHandler;
+import org.w3c.dom.Document;
+import org.xml.sax.SAXException;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.xpath.XPathExpressionException;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -158,7 +164,7 @@ public class CreateStreamingDeliveryTargetFileset extends AbstractCommand {
             Track t = trackOriginalFilename.keySet().iterator().next();
             double durationInSeconds = t.getDuration() / t.getTrackMetaData().getTimescale();
             int numberOfSamples = t.getSamples().size();
-            int numberOfSamplesPer5Seconds = (int) (numberOfSamples / durationInSeconds * 5);
+            int numberOfSamplesPer5Seconds = (int) Math.ceil(numberOfSamples / durationInSeconds * 5);
             final long[] fragmentStartSamples = new long[(int) Math.ceil(numberOfSamples / numberOfSamplesPer5Seconds) + 1];
             for (int i = 0; i < fragmentStartSamples.length; i++) {
                 fragmentStartSamples[i] = i * numberOfSamplesPer5Seconds + 1;
@@ -174,8 +180,9 @@ public class CreateStreamingDeliveryTargetFileset extends AbstractCommand {
     }
 
 
-    public Map<Track, String> setupTracks() throws IOException, CommandAbortException {
+    public Map<Track, String> setupTracks() throws IOException, CommandAbortException, XPathExpressionException, SAXException, ParserConfigurationException {
         Map<Track, String> track2File = new HashMap<Track, String>();
+        List<File> xmls = new ArrayList<File>();
         for (File inputFile : inputFiles) {
             if (inputFile.getName().endsWith("mp4")) {
                 Movie movie = MovieCreator.build(new FileDataSourceImpl(inputFile));
@@ -201,6 +208,9 @@ public class CreateStreamingDeliveryTargetFileset extends AbstractCommand {
                 } else if (inputFile.getName().endsWith(".dtshd")) {
                     track = new DTSTrackImpl(new FileDataSourceImpl(inputFile));
                     logger.fine("Created DTS HD Track from " + inputFile.getName());
+                } else if (inputFile.getName().endsWith(".xml")) {
+                    xmls.add(inputFile);
+
                 } else {
                     logger.warning("Cannot identify type of " + inputFile + ". Extensions mp4, aac, ac3, ec3 or dtshd are known.");
                 }
@@ -215,6 +225,38 @@ public class CreateStreamingDeliveryTargetFileset extends AbstractCommand {
                         track2File.put(track, inputFile.getName());
                     }
                 }
+            }
+        }
+
+        if (!xmls.isEmpty()) {
+            DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+            dbFactory.setNamespaceAware(true);
+            DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+            HashMap<String, List<File>> languageGrouped = new HashMap<String, List<File>>();
+            final HashMap<File, Long> startTimes = new HashMap<File, Long>();
+            for (File xml : xmls) {
+                Document doc = dBuilder.parse(xml);
+                String lang = SMPTETTTrackImpl.getLanguage(doc);
+                List<File> sameLangFiles = languageGrouped.get(lang);
+                if (sameLangFiles == null) {
+                    sameLangFiles = new ArrayList<File>();
+                    languageGrouped.put(lang, sameLangFiles);
+                }
+                sameLangFiles.add(xml);
+                startTimes.put(xml, SMPTETTTrackImpl.earliestTimestamp(doc));
+            }
+
+            for (Map.Entry<String, List<File>> stringListEntry : languageGrouped.entrySet()) {
+                String lang = stringListEntry.getKey();
+                List<File> sameLangFiles = stringListEntry.getValue();
+                Collections.sort(sameLangFiles, new Comparator<File>() {
+                    @Override
+                    public int compare(File o1, File o2) {
+                        return (int) (startTimes.get(o1) - startTimes.get(o2));
+                    }
+                });
+                track2File.put(new SMPTETTTrackImpl(sameLangFiles.toArray(new File[sameLangFiles.size()])), sameLangFiles.get(0).getName());
+                logger.fine("Created SMPTE-TT Track from " + sameLangFiles + " in " + lang);
             }
         }
         return track2File;
@@ -303,6 +345,7 @@ public class CreateStreamingDeliveryTargetFileset extends AbstractCommand {
             originalFilename = originalFilename.replace(".ec3", "");
             originalFilename = originalFilename.replace(".ac3", "");
             originalFilename = originalFilename.replace(".dtshd", "");
+            originalFilename = originalFilename.replace(".xml", "");
             for (Track track1 : filenames.keySet()) {
                 if (track1 != track &&
                         trackOriginalFilename.get(track1).equals(trackOriginalFilename.get(track))) {

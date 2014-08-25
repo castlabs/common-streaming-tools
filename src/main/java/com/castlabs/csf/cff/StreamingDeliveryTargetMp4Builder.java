@@ -170,13 +170,13 @@ public class StreamingDeliveryTargetMp4Builder extends FragmentedMp4Builder {
         cinf.setProfileLevelIdc(profileLevelIds.replaceAll(",$", ""));
         cinf.setMimeSubtypeName(mimeSubtypeName.replaceAll(",$", ""));
         cinf.setProtection(protection.replaceAll(",$", ""));
-        cinf.getIdEntries().add(new ContentInformationBox.IdEntry("urn:dece:asset_id", apid));
+        cinf.getIdEntries().put("urn:dece:asset_id", apid);
 
         FileTypeBox ftyp = (FileTypeBox) createFtyp(movie);
         for (String s : ftyp.getCompatibleBrands()) {
-            cinf.getBrandEntries().add(new ContentInformationBox.BrandEntry(s, "0"));
+            cinf.getBrandEntries().put(s, "0");
         }
-        cinf.getBrandEntries().add(new ContentInformationBox.BrandEntry("cinf", "200"));
+        cinf.getBrandEntries().put("cinf", "200");
         return cinf;
     }
 

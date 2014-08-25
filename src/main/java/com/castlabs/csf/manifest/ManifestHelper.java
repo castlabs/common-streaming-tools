@@ -15,7 +15,7 @@ import com.coremedia.iso.boxes.fragment.TrackRunBox;
 import com.coremedia.iso.boxes.sampleentry.AudioSampleEntry;
 import com.coremedia.iso.boxes.sampleentry.DashHelper;
 import com.coremedia.iso.boxes.sampleentry.VisualSampleEntry;
-import com.googlecode.mp4parser.boxes.dece.AssetInformationBox;
+import com.googlecode.mp4parser.boxes.dece.ContentInformationBox;
 import com.googlecode.mp4parser.util.Path;
 import mpegDashSchemaMpd2011.AdaptationSetType;
 import mpegDashSchemaMpd2011.DescriptorType;
@@ -64,35 +64,27 @@ public class ManifestHelper {
      */
     public static RepresentationType createRepresentation(AdaptationSetType adaptationSet, IsoFile track) {
         RepresentationType representation = adaptationSet.addNewRepresentation();
-        AssetInformationBox ainf = (AssetInformationBox) Path.getPath(track, "/moov[0]/ainf[0]");
-        if (ainf.getVersion() == 0) {
-            representation.setId(ainf.getV0Apid());
-        } else if (ainf.getVersion() == 1) {
-            for (AssetInformationBox.Entry entry : ainf.getV1Entries()) {
-                if ("urn:dece".equals(entry.namespace)) {
-                    representation.setId(entry.assetId);
+        ContentInformationBox contentInformationBox = Path.getPath(track, "/moov[0]/cinf[0]");
+        representation.setId(contentInformationBox.getIdEntries().get("urn:dece:asset_id"));
 
-                }
-            }
-        }
         String handler = ((HandlerBox) Path.getPath(track, "/moov[0]/trak[0]/mdia[0]/hdlr[0]")).getHandlerType();
         if (handler.equals("vide")) {
-            VisualSampleEntry vse = (VisualSampleEntry) Path.getPath(track, "/moov[0]/trak[0]/mdia[0]/minf[0]/stbl[0]/stsd[0]/....[0]");
+            VisualSampleEntry vse = Path.getPath(track, "/moov[0]/trak[0]/mdia[0]/minf[0]/stbl[0]/stsd[0]/....[0]");
             long videoHeight = (long) vse.getHeight();
             long videoWidth = (long) vse.getWidth();
 
-            TrackRunBox trun = (TrackRunBox) Path.getPath(track, "/moof[0]/traf[0]/trun[0]");
-            MediaHeaderBox mdhd = (MediaHeaderBox) Path.getPath(track, "/moov[0]/trak[0]/mdia[0]/mdhd[0]");
+            TrackRunBox trun = Path.getPath(track, "/moof[0]/traf[0]/trun[0]");
+            MediaHeaderBox mdhd = Path.getPath(track, "/moov[0]/trak[0]/mdia[0]/mdhd[0]");
             // assuming constant framerate
             long sampleDuration;
             if (trun.isSampleDurationPresent()) {
                 sampleDuration = trun.getEntries().get(0).getSampleDuration();
             } else {
-                TrackFragmentHeaderBox tfhd = (TrackFragmentHeaderBox) Path.getPath(track, "/moof[0]/traf[0]/tfhd[0]");
+                TrackFragmentHeaderBox tfhd = Path.getPath(track, "/moof[0]/traf[0]/tfhd[0]");
                 if (tfhd.hasDefaultSampleDuration()) {
                     sampleDuration = tfhd.getDefaultSampleDuration();
                 } else {
-                    TrackExtendsBox trex = (TrackExtendsBox) Path.getPath(track, "/moov[0]/mvex[0]/trex[0]");
+                    TrackExtendsBox trex = Path.getPath(track, "/moov[0]/mvex[0]/trex[0]");
                     sampleDuration = trex.getDefaultSampleDuration();
                 }
             }
@@ -122,7 +114,7 @@ public class ManifestHelper {
         }
 
         if (handler.equals("soun")) {
-            AudioSampleEntry ase = (AudioSampleEntry) Path.getPath(track, "/moov[0]/trak[0]/mdia[0]/minf[0]/stbl[0]/stsd[0]/....[0]");
+            AudioSampleEntry ase = Path.getPath(track, "/moov[0]/trak[0]/mdia[0]/minf[0]/stbl[0]/stsd[0]/....[0]");
             representation.setCodecs(DashHelper.getRfc6381Codec(ase));
             representation.setAudioSamplingRate(String.valueOf(ase.getSampleRate()));
 
